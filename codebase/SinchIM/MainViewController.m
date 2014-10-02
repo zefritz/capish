@@ -23,16 +23,20 @@ typedef NS_ENUM(int, MessageDirection) { Incoming, Outgoing, };
 
 - (void)sendButtonPressed:(id)sender {
 
-  NSString *destination = self.destination.text;
-  NSString *text = self.message.text;
+    NSString *destination = self.destination.text;
+    NSString *text = self.message.text;
 
-  if ([destination length] == 0 || [text length] == 0) {
-    return;
-  }
+    if ([destination length] == 0 || [text length] == 0) {
+      return;
+    }
 
-  SINOutgoingMessage *message = [SINOutgoingMessage messageWithRecipient:destination text:text];
+    SINOutgoingMessage *message = [SINOutgoingMessage messageWithRecipient:destination text:text];
 
-  [[self.client messageClient] sendMessage:message];
+    [[self.client messageClient] sendMessage:message];
+    
+    if ([text length] != 0) {
+        self.message.text = @"";
+    }
 }
 
 #pragma mark - SINMessageClientDelegate

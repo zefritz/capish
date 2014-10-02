@@ -15,7 +15,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "CF2B32741664EF6A0024D977"
-               BuildableName = "SinchIM.app"
+               BuildableName = "Cappish.app"
                BlueprintName = "Cappish"
                ReferencedContainer = "container:Cappish.xcodeproj">
             </BuildableReference>
@@ -33,7 +33,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "CF2B32741664EF6A0024D977"
-            BuildableName = "SinchIM.app"
+            BuildableName = "Cappish.app"
             BlueprintName = "Cappish"
             ReferencedContainer = "container:Cappish.xcodeproj">
          </BuildableReference>
@@ -52,7 +52,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "CF2B32741664EF6A0024D977"
-            BuildableName = "SinchIM.app"
+            BuildableName = "Cappish.app"
             BlueprintName = "Cappish"
             ReferencedContainer = "container:Cappish.xcodeproj">
          </BuildableReference>
@@ -70,7 +70,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "CF2B32741664EF6A0024D977"
-            BuildableName = "SinchIM.app"
+            BuildableName = "Cappish.app"
             BlueprintName = "Cappish"
             ReferencedContainer = "container:Cappish.xcodeproj">
          </BuildableReference>
