@@ -1,0 +1,94 @@
+<h2 id="overview">Overview</h2>
+
+<p>Sinch offers a platform for real time communication over the Internet. It consists of a software development kit - the Sinch SDK - that you integrate with your smartphone application and back-end services in the cloud. Together, they enable real time communication in your application. The Sinch SDK is currently available for iOS and Android platforms and most of the Sinch back-end services are also exposed over REST, primarily for back-end to back-end integration.</p>
+
+<p>Apart for real time communication <em>between</em> smartphone applications, the Sinch back-end services also integrate with the PSTN in form of high quality voice termination and SMS termination at low rates.</p>
+
+<p>You typically do not need to provide an application back-end yourself when using Sinch, but if you do, you gain a finer control of the way Sinch behaves in different scenarios. There are essentially three ways in which you can use Sinch with your application:</p>
+
+<ul>
+<li><em>Out-of-the-box</em> - in most cases, Sinch can be used without needing a back-end or any configuration - just create an account at <a href="http://www.sinch.com" title="Sinch">www.sinch.com</a>, download the SDK and get started in minutes</li>
+<li><em>Configured</em> - you can tune the way the Sinch back-end services behave by editing your account configuration in the Sinch developer portal</li>
+<li><em>Managed</em> - have the Sinch back-end doing callbacks to your application back-end to fully customize the way Sinch behaves</li>
+</ul>
+
+<p>Typical scenarios you can implement using the Sinch platform include:</p>
+
+<ul>
+<li>Making data to data voice calls between smartphone applications</li>
+<li>Making data to PSTN calls from smartphone applications at low rates</li>
+<li>Sending IMs between smartphone applications</li>
+<li>Sending SMSs</li>
+</ul>
+
+<p>You typically use your own user names with the Sinch platform - the only requirement being that they need to be unique per user. When creating an account at Sinch, you will automatically get two &#8220;user spaces&#8221; - a &#8220;production&#8221; user space, and a &#8220;sandbox&#8221; user space. As the names indicate, the production user space should be used for &#8220;real&#8221; user accounts, whereas the sandbox can be used for testing without having to consider what happens to &#8220;real&#8221; users.</p>
+
+<p>When you create an account with Sinch you receive an Application Key and an Application Secret per user space. These can be used to make secure calls from your application back-end to the Sinch back-end (server to server) or for creating &#8220;user tokens&#8221; that enable the specified user to be registered and authenticated in the Sinch back-end through the Sinch SDK in your application.</p>
+
+<p>Because PSTN calls have an associated cost, you may want extra control from your own application back-end when setting up data to PSTN calls. Do this by setting up callbacks from the Sinch platform to your application back-end during lifetime of a call - see <a href="#calling">Calling</a>.</p>
+
+<p>For PSTN termination prices - see <a href="http://www.sinch.com/pricing">Sinch Pricing</a>.</p>
+
+<h3 id="calling">Calling</h3>
+
+<p>When calling, the Sinch platform can be seen as a big telephony switch. It receives incoming phone calls (also known as <em>incoming call &#8220;legs&#8221;</em>), sets up outgoing phone calls (also known as <em>outgoing call &#8220;legs&#8221;</em>) and bridges the two. The incoming call leg comes in over data (VoIP) whereas the the outgoing call leg can be over data (to another smartphone application) or to the PSTN.</p>
+
+<p>Making a data call involves signaling and two voice data streams. The signaling handles the setup and the teardown of the call, including deciding to which IP addresses and ports to send the voice data streams and which compression algorithms (codecs) to use for the voice data streams. The Sinch platform uses an encrypted, HTTP-based, long polling architecture for signaling and sends RTP data streams over User Datagram Protocol (UDP) for voice data streams, supporting different codecs for different situations.</p>
+
+<p>With the Sinch platform, you can setup a call as &#8220;attended&#8221; or &#8220;peer to peer&#8221;. n attended call passes through the Sinch back-end. An attended call can be managed from your application back-end through REST APIs (hung up, IVRs played). For peer-to-peer calls, signaling and voice streams flow as directly as possible between applications and therefore cannot be controlled in the same way. Setting up a peer-to-peer call includes NAT traversal to find the most direct network paths for the voice data streams.</p>
+
+<p>Controlling an attended call from your application back-end is done by responding to callbacks from the Sinch back-end and/or by calling REST APIs in the Sinch back-end from your application back-end. The figure that follows illustrates the lifecycle of a call and shows where both callbacks and REST API calls are located or can be made.</p>
+
+<figure>
+<img src="images/Sinch.png" alt="" /></figure>
+
+
+
+<p>The <em>Incoming Call Event</em>, ICE, is triggered when the Sinch back-end receives an incoming call. The event can trigger a REST request to your application back-end. Your reply instructs the Sinch platform how to act. The response can, for instance, instruct Sinch to play a number of IVRs and then connect the call to the PSTN. When the call is answered, the <em>Answered Call Event</em> (ACE), is triggered and can render an additional REST call to your platform. Finally, when the call is disconnected, the <em>Disconnected Call Event</em> (DiCE) is triggered (and can also trigger a call to your application back-end). Between ACE and DiCE, it is legal to call the <em>ManageCall</em> REST API to instruct the call to be hung up and/or to play an Interactive Voice Response (IVR) during the conversation.</p>
+
+<p>For more details on the REST APIs for calling, see <a href="../api-documentation/#callingapi" title="Calling API">Calling</a>.</p>
+
+<h3 id="messaging">Messaging</h3>
+
+<p>See <a href="../sms-quickstart/" title="Messaging Quick Start">Messaging Quick Start</a></p>
+
+<h2 id="apisdocumentation">APIs Documentation</h2>
+
+<p><a href="../api-documentation/" title="General API Documentation">General API Documentation</a></p>
+
+<p><a href="../api-documentation/#callback" title="Calling Callback API">Calling Callback API</a></p>
+
+<p><a href="../api-documentation/#callingcallbackapi" title="Calling API">Calling API</a></p>
+
+<p><a href="../api-documentation/#reportingapi" title="Reporting API">Reporting API</a></p>
+
+<h2 id="cdrformat">CDR Format</h2>
+
+<p><a href="../api-documentation/#calldetailrecords" title="CDR Format specification">Specification</a></p>
+
+<h2 id="glossary">Glossary</h2>
+
+<p><table>
+<tr><th>Term</th><th>Explanation</th></tr>
+<tr><td>RTC</td><td>Real Time Communication</td></tr>
+<tr><td>SDK</td><td>Software Development Kit</td></tr>
+<tr><td>PSTN</td><td>Public Switched Telephone Network (plain old telephony)</td></tr>
+<tr><td>REST</td><td>Representational State Transfer</td></tr>
+<tr><td>API</td><td>Application Programming Interface</td></tr>
+<tr><td>ACE</td><td>Answered Call Event</td></tr>
+<tr><td>ICE</td><td>Incoming Call Event</td></tr>
+<tr><td>DiCE</td><td>Disconnected Call Event</td></tr>
+<tr><td>IM</td><td>Instant Messages</td></tr>
+<tr><td>User Space</td><td>Universe of unique user names</td></tr>
+<tr><td>Data Call</td><td>Phone call over the Internet, a.k.a. &#8220;VoIP&#8221;</td></tr>
+<tr><td>VoIP</td><td>Voice over IP</td></tr>
+<tr><td>CODEC</td><td>Coder/Decoder</td></tr>
+<tr><td>HTTP</td><td>Hyper Text Transfer Protocol</td></tr>
+<tr><td>RTP</td><td>Real time Protocol</td></tr>
+<tr><td>UDP</td><td>User Datagram Protocol</td></tr>
+<tr><td>IVR</td><td>Interactive Voice Response</td></tr>
+<tr><td>CDR</td><td>Call Detail Record</td></tr>
+<tr><td>SMS</td><td>Short Message Service</td></tr>
+<tr><td>NAT</td><td>Network Address Translation</td></tr>
+<tr><td>MXP</td><td>Media eXchange Protocol</td></tr>
+<tr><td>SVAML</td><td>Sinch Voice Application Markup Language</td></tr><table></p>

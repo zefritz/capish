@@ -1,0 +1,156 @@
+3.2.1
+  - Improvements in handling unstable network connection when initiating a call.
+
+3.2.0
+  - Added peristence. Messages are now persisted internally in the SDK and retried
+    automatically for 12 hours before failing. 
+  
+3.1.5
+  - Internal improvements for Call headers.
+
+3.1.4
+  - Bugfix: Incoming calls will from now on never have state SINCallStateProgressing.
+      Previously, incoming calls could either be in SINCallStateInitiating
+      or SINCallStateProgressing just after 
+      -[SINCallClientDelgate client:didReceiveIncomingCall:].
+      Now, the call will initially be in SINCallStateInitiating, until
+      transitioning to SINCallStateEstablished or SINCallStateEnded.
+
+  - Fixed crash when attempting to send DTMF during call setup.
+
+3.1.3
+  - Fixed crash that could occur under bad network conditions
+
+3.1.2
+  - Internal improvements: Reducing number of signaling messages sent when
+    initiating a voice call.
+
+3.1.1
+  - Improvements for Swift compatibility:
+    - Use NS_ENUM when declaring enums, e.g. SINCallState, SINCallEndCause etc.
+
+3.1.0
+  - -[SINClient stop] has been deprecated and replaced by -[SINClient terminate].
+    As part of this change, the SINClient is invalidated after -[SINClient terminate]
+    has been called and cannot be restarted.
+
+3.0.0
+  - App-to-Phone (PSTN) calling functionality:
+    - New method: -[SINClient callPhoneNumber:]
+    - New method: -[SINCall sendDTMF:] 
+
+  - Support for sending Instant Messages to multiple recipients.
+ 
+  - Objective-C prefix changed, REB -> SIN (Rebtel -> Sinch)
+  - Removed -[SINCallDelegate callReceivedOnRemoteEnd:]
+  - New method -[SINCallDelegate callReceivedOnRemoteEnd:earlyMedia:]
+  - -[SINMessageClientDelegate messageDeliveryFailed:info:] no longer
+    takes an array as second argument, but a single SINMessageFailureInfo.
+  - Removed [SINMessageClientDelegate messageSent:]
+  - New method [SINMessageClientDelegate messageSent:recipientId:]
+
+2.1.1
+  - Fixed issue with playback of audio files not de-activating
+    the AVAudioSession properly.
+    Resolved so that if -[REBAudioController 
+    startPlayingSoundFile:loop:] is invoked with loop == NO, 
+    the audio session will automatically be deactivated when
+    playback of the file ends, i.e. when the duration of the 
+    file has elapsed.
+
+2.1.0
+  - Improved audio quality 
+  - Audio Session category mode AVAudioSessionModeVoiceChat is now
+    applied when the SDK initially configures the audio session.
+  - Added -[REBOutgoingMessage messageWithMessage:] to make it
+    easier to resend failed messages.
+
+2.0.1
+	Improvements:
+	- Stability
+	  - Fixed issue where SDK under certain circumstances could
+	  retry establishing a lost connection to aggressively.
+
+2.0.0
+	New features:
+	
+	- Instant Messaging
+	
+	  New classes / protocols: 
+	  - REBMessageClient
+	  - REBMessageClientDelegate
+	  - REBMessage
+	  - REBOutgoingMessage	
+	  - REBMessageDeliveryInfo
+	  - REBMessageFailureInfo
+
+	  
+	Breaking API changes since 1.x:
+	
+	- REBNotificationResult is no longer used only for incoming calls. 
+	
+	  After a notification result has been obtained from either 
+	    -[REBClient relayLocalNotification:] or 
+	    -[REBClient relayRemotePushNotificationPayload:],
+	  it should be inspected with the methods:
+  	    -[REBNotificationResult isCall] and
+	    -[REBNotificationResult isMessage]. 
+	
+	  It can thereafter be transformed into a call-specific, or 
+	  message-specific notification result via the methods:
+	    -[REBNotificationResult callResult]
+	    -[REBNotificationResult messageResult].
+	
+	  - New protocols: 
+	    - REBCallNotificationResult
+	    - REBMessageNotificationResult
+	    - REBPushPair
+
+	  - Removed files:
+	    - REBError.h
+	
+	- The -[REBCall call:shouldSendPushNotifications:] signature has changed.
+	  When a call previously indicated it needed to be pushed to the remove
+	  user, the callback was passed a string with the payload and an
+	  array with destinations. This has now been changed. Instead the
+	  callback is passed an array of REBPushPair that contains the
+	  same data.
+	
+1.2.1
+	Improvements:
+	
+	- Fix for intermittent issue with failing voice audio input/output 
+	  on iOS 7.
+
+	-[REBClientDelegate client:didReceiveIncomingCall:] being invoked if 
+	app returns to foreground when user taps app icon on Home Screen.
+	REBClient will notify it’s delegate of an incoming call as soon as 
+	the application returns to foreground, if the incoming call is still 
+	relevant (i.e. not timed out). 
+	  This fixes an issue where the delegate would not be notified about 
+	the incoming call if the user tapped the app icon on Home Screen to 
+	answer a call. (Previously, the app always had to use 
+	-[REBClient relayLocalNotification:] to trigger the event chain 
+	leading up to -[REBClientDelegate client:didReceiveIncomingCall:] 
+	being called. )
+
+1.2.0
+	New features:
+	
+	- Peer-to-Peer media streams: 
+	  The voice stream of voip calling   will now flow directly from one
+	  peer (user) to the other, without passing through the Rebtel 
+	  servers. This brings lower latency and better voice quality.
+
+1.0.1
+	Minor improvements 
+	
+1.0.0 
+	Features:
+
+	- User-to-user calling from within any app
+	- HD voice quality by supporting the iSAC codec
+	- Advanced Call handling
+	- Audio handling
+	- Background mode support
+	- Push notifications support

@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8"/>
+	<title>Sinch iOS User Guide</title>
+	<meta name="copyright" content="Copyright (c) 2014 Sinch Networks AB. All rights reserved."/>
+	<link type="text/css" rel="stylesheet" href="css/Sinch.css"/>
+</head>
+<body>
+
+<h1 id="introduction">Introduction</h1>
+
+<p>The Sinch SDK is a product that makes adding voice calling and/or instant messaging to mobile apps easy. It handles the complexity of signaling and audio management while providing you the freedom to create a stunning user interface.</p>
+
+<p>This document provides an overview for developers integrating with Sinch SDK for the first time. It outlines the prerequisites and guides you through the process of setting up and answering calls as well as sending and receiving instant messages. </p>
+
+<p>Please see the <a href="http://www.sinch.com/docs/ios/reference/">Reference Documentation</a> for a comprehensive description of all the classes.</p>
+
+<h1 id="firsttimesetup">First time setup</h1>
+
+<p>This is a step-by-step guide about setting up the Sinch SDK for the first time.</p>
+
+<h2 id="registeranapplication">Register an Application</h2>
+
+<ol>
+<li>Register a Sinch Developer account at <a href="http://www.sinch.com/signup">http://www.sinch.com/signup</a>.</li>
+<li>Setup a new Application using the Dashboard where you can then obtain an <em>Application Key</em> and an <em>Application Secret</em>.</li>
+</ol>
+
+<h2 id="download">Download</h2>
+
+<p>The Sinch SDK can be downloaded at <a href="http://www.sinch.com/download/">www.sinch.com/download/</a>. It contains: the library binary, this user guide, reference documentation, and sample apps for calling and instant messaging.</p>
+
+<h2 id="addthesinchframework">Add the Sinch framework</h2>
+
+<p>Drag the Sinch framework folder from the SDK distribution package folder into the Frameworks section of the Project Navigator.</p>
+
+<p>The Sinch SDK depends on the following frameworks, which must be added to the project and linked with the application target.</p>
+
+<ul>
+<li>AudioToolbox.framework</li>
+<li>AVFoundation.framework</li>
+<li>Security.framework</li>
+</ul>
+
+<p>Some additional linker flags need to be added. In the Build Settings pane for the application target, set the following:</p>
+
+<ul>
+<li>Other Linker Flags -&gt; <code>-ObjC -Xlinker -lstdc++</code></li>
+</ul>
+
+<h3 id="sinchisavailableasacocoapod">Sinch is available as a CocoaPod</h3>
+
+<p>If you are using <a href="http://www.cocoapods.org">CocoaPods</a>, add the following to your Podfile:</p>
+
+<pre><code>pod 'SinchRTC'
+</code></pre>
+
+<p><em>Tip:</em> Using the pod allows you to skip the manual setup of linker flags in the previous section.</p>
+
+<h2 id="info.plist">Info.plist</h2>
+
+<p>If only the instant messaging functionality will be used, then no changes to the <em>Info.plist</em> are necessary.</p>
+
+<p>If voice calling functionality will be enabled and used, add the following to your <em>Info.plist</em>:</p>
+
+<ul>
+<li>Required background modes (<code>UIBackgroundModes</code>):
+
+<ul>
+<li>Application plays audio (<code>audio</code>)</li>
+<li>Application provides Voice over IP services (<code>voip</code>)</li>
+</ul></li>
+</ul>
+
+<h1 id="sinchclient">Sinch client</h1>
+
+<p>The <em>SINClient</em> is the Sinch SDK entry point. It is used to configure the user&#8217;s and device&#8217;s capabilities, as well as providing access to feature classes such as the <em>SINCallClient</em>, <em>SINMessageClient</em> and <em>SINAudioController</em>.</p>
+
+<h2 id="creatingthesinclient">Creating the <em>SINClient</em></h2>
+
+<p>Set up the client and its delegate (<em>SINClientDelegate</em>, see <a href="../reference/html/Protocols/SINClientDelegate.html">Reference</a> documentation).</p>
+
+<pre><code>#import &lt;Sinch/Sinch.h&gt;
+
+// Instantiate a Sinch client object
+id&lt;SINClient&gt; sinchClient = [Sinch clientWithApplicationKey:@&quot;&lt;application key&gt;&quot; 
+                                          applicationSecret:@&quot;&lt;application secret&gt;&quot;
+                                            environmentHost:@&quot;sandbox.sinch.com&quot; 
+                                                     userId:@&quot;&lt;user id&gt;&quot;];
+</code></pre>
+
+<p>The <em>Application Key</em> and <em>Application Secret</em> are obtained from the Sinch Developer Dashboard. See <a href="#productionandsandboxenvironments">Production and Sandbox Environments</a> for valid values for <em>environmentHost</em>. The User ID should uniquely identify the user on the particular device.</p>
+
+<h2 id="specifyingcapabilities">Specifying capabilities</h2>
+
+<p>The SINClient can be configured to enable / disable certain functionality. Please see the <a href="../reference/html/Protocols/SINClient.html">Reference</a> for details.</p>
+
+<p>The following example shows how to setup the client with both voice calling and instant messaging enabled.</p>
+
+<pre><code>// Specify the client capabilities. 
+// At least one of the messaging or calling capabilities should be enabled.
+[sinchClient setSupportCalling:YES];
+[sinchClient setSupportMessaging:YES];
+[sinchClient setSupportActiveConnectionInBackground:YES]; 
+[sinchClient setSupportPushNotifications:YES];                                                    
+</code></pre>
+
+<h2 id="startingthesinchclient">Starting the Sinch client</h2>
+
+<p>Before starting the client, make sure you assign a <em>SINClientDelegate</em>.</p>
+
+<pre><code>// Assign as SINClientDelegate                             
+sinchClient.delegate = ... ;
+
+// Start the Sinch Client
+[sinchClient start];
+
+// Start listening for incoming events (calls and messages).
+[sinchClient startListeningOnActiveConnection];
+</code></pre>
+
+<p><em>Note:</em> If the application is meant to only make outgoing calls but not receive incoming calls, don&#8217;t call the <code>startListeningOnActiveConnection</code>. Outgoing calls can be made after calling the start method, and after the delegate has received the callback <code>clientDidStart:</code>.</p>
+
+<p>For applications that want to to receive incoming calls while not running in the foreground, a few additional steps are required. Refer to the <a href="#backgroundmode">Background Mode</a> and <a href="#pushnotifications">Push Notifications</a> sections for details.</p>
+
+<h3 id="lifecyclemanagementofasinclient-instance">Life cycle management of a <em>SINClient</em>-instance</h3>
+
+<p>We recommend that you initiate the Sinch client, start it, but not terminate it, during the lifetime of the running application. That also implies that the <em>SINClient</em>-instance should be <em>retained</em> by the application code.</p>
+
+<p>If incoming events are not needed, stop listening for incoming events by invoking <code>-[SINClient stopListeningOnActiveConnection]</code>), but <strong>not</strong> invoking <code>-[SINClient terminate]</code>. The reason is initializing and <em>starting</em> the client is relatively resource-intensive in terms of CPU. </p>
+
+<p>It is best to keep the client instance alive and started unless there are reasons specific to your application. It should <em>not</em> be necessary to dispose of the client instance if memory warnings are received from iOS, because once the client is started it does not use much memory in comparison to view layers, view controllers etc.</p>
+
+<p>For the same reason, if the support for push notifications is enabled, the preferred method of temporarily stopping incoming events using push notifications is to unregister the push notification data (see <a href="#pushnotifications">Push Notifications</a>).</p>
+
+<p>The Sinch client can of course be completely stopped and also disposed. To do so, call the terminate method on the client before the application code releases its last reference to the client object.</p>
+
+<p>The following example shows how to dispose the Sinch client: </p>
+
+<pre><code>[sinchClient stopListeningOnActiveConnection];
+[sinchClient terminate];
+[sinchClient release]; // unless using ARC
+sinchClient = nil;
+</code></pre>
+
+<h1 id="calling">Calling</h1>
+
+<p>The Sinch SDK supports two types of calls: <em>app-to-app</em> calls and <em>app-to-phone</em> calls. The SINCallClient is the entry point for the calling functionality of the Sinch SDK.</p>
+
+<p>Calls are placed through the <code>SINCallClient</code> and events are received using the <code>SINCallClientDelegate</code>. The call client is owned by the SinchClient and accessed using <code>[sinchClient callClient]</code>. Calling is not enabled by default. </p>
+
+<p>Enable calling with the following method before starting the <code>SINCallClient</code>:</p>
+
+<pre><code>[sinchClient setSupportCalling:YES];    
+</code></pre>
+
+<h2 id="settingupanapp-to-appcall">Setting up an <em>app-to-app</em> call</h2>
+
+<p>Use the call client to start the call using the <code>callUserWithId:</code> method by passing the user identifier of the callee (the user receiving a call) as an argument. </p>
+
+<pre><code>id&lt;SINCallClient&gt; callClient = [sinchClient callClient];
+id&lt;SINCall&gt; call = [callClient callUserWithId:@&quot;&lt;remote user id&gt;&quot;];
+</code></pre>
+
+<p>A call object is returned, containing details about the participants in the call, call details such as start time, call state, possible errors, and so on.</p>
+
+<p>Assuming the callee&#8217;s device is available and responsive, the delegate method <code>callDidProgress:</code> is called. It notifies the application that the outgoing call is progressing. If a progress tone should be played, this is where it should be started. We recommend that you use the available functionality provided by the Sinch SDK to play sounds such as ringtones (<code>SINAudioController</code>). See <a href="#playingringtones">Playing Ringtones</a> for details. </p>
+
+<p>When the other party answers, the <code>callDidEstablish:</code> call delegate method is called. Now, the users can start talking. If a progress tone has been initiated, it should be stopped now, in the delegate callback method.</p>
+
+<h2 id="settingupanapp-to-phonecall">Setting up an <em>app-to-phone</em> call</h2>
+
+<p>An <em>app-to-phone</em> call is a call that is made to a phone on the regular telephone network. Setting up an <em>app-to-phone</em> call is not much different from setting up an <em>app-to-app</em> call. </p>
+
+<p>Instead of invoking the <code>callUserWithId:</code> method, invoke the <code>callPhoneNumber:</code> method on the <code>SINCallClient</code> object. Sufficient funds must be available on the Sinch account and a valid phone number specified for the call to connect successfully. The phone number should be specified according to the E.164 number formatting (<a href="http://en.wikipedia.org/wiki/E.164">http://en.wikipedia.org/wiki/E.164</a>) recommendation and should be prefixed with a &#8216;+&#8217;. E.g. to call the US phone number 415 555 0101, the phone number should be specified as &#8220;+14155550101&#8221;. The &#8216;+&#8217; is the required prefix and the US country code &#8216;1&#8217; prepended to the local subscriber number.</p>
+
+<p>Placing an <em>app-to-phone</em> call requires an account with credits; topping up credits can be done on the Account page. Credits are used each time an <em>app-to-phone</em> call is placed and the balance history is updated after each call.</p>
+
+<p><em>App-to-phone</em> calls can be tested by calling the following test number: <em>+46000000000</em>. When placing a call to this number, you will hear a voice prompt stating that the call has been connected, and shortly after that the call will automatically be ended. </p>
+
+<h2 id="handlingincomingcalls">Handling incoming calls</h2>
+
+<p>To answer calls, the application must be notified when the user receives an incoming call.</p>
+
+<p>To act on the incoming calls, add a call client delegate to the call client. The call client delegate is notified using the delegate method <code>didReceiveIncomingCall:</code> as calls come in to the device.</p>
+
+<p>When the delegate method is executed, the call can either be connected automatically without any user action, or it can wait for the user to press the answer or the hangup button. We recommend that ringtones are played from within the delegate callback method. See <a href="#playingringtones">Playing Ringtones</a> for details. </p>
+
+<pre><code>- (void)client:(id&lt;SINCallClient&gt;)client didReceiveIncomingCall:(id&lt;SINCall&gt;)call {
+    // Start playing ringing tone
+    ... 
+
+    // Assign delegate
+    call.delegate = self;
+}
+</code></pre>
+
+<p>To get events related to the call, set the call delegate. The call object contains details about participants, start time, potential error codes, and error messages. </p>
+
+<h3 id="answeringanincomingcall">Answering an incoming call</h3>
+
+<p>To answer a call, use the <code>answer</code> method on the call to accept it. If a ringtone was previously played, it should be stopped now.</p>
+
+<p>User presses the answer button: </p>
+
+<pre><code>// User answers the call 
+[call answer];
+
+// Stop playing ringing tone
+...     
+</code></pre>
+
+<p>Now, the clients on both ends establish the connection. When the call is established and the voice streams are running in both directions, the <code>callDidEstablish:</code> delegate method is called. </p>
+
+<h3 id="declininganincomingcall">Declining an incoming call</h3>
+
+<p>If the call should not be answered, use the <code>hangup</code> method on the call to decline. The caller is notified that the incoming call was denied. If a ringtone was previously played, it should be stopped now.</p>
+
+<p>User presses the hangup button: </p>
+
+<pre><code>// User does not want to answer
+[call hangup];
+
+// Stop playing ringing tone
+...     
+</code></pre>
+
+<h2 id="disconnectingacall">Disconnecting a call</h2>
+
+<p>When the user wants to disconnect an ongoing call, use the <code>hangup</code> method. Either user taking part in a call can disconnect it.</p>
+
+<p>Hanging up a call:</p>
+
+<pre><code>[call hangup];
+</code></pre>
+
+<p>When either party disconnects a call, the application is notified using the call delegate method <code>callDidEnd:</code>. This allows the user interface to be updated, an alert tone to be played, or similar actions to occur.</p>
+
+<p>A call can be disconnected before it has been completely established. </p>
+
+<p>Hanging up a connecting call:</p>
+
+<pre><code>// Starting a call
+id&lt;SINCall&gt; call = [client callUserWithId:@&quot;&lt;remote user id&gt;&quot;];
+
+// User changed his/her mind, let’s hangup
+[call hangup];
+</code></pre>
+
+<p>Handling a call that ends:</p>
+
+<pre><code>// SINCallDelegate implementation
+
+- (void)callDidEnd:(id&lt;SINCall&gt;) call {
+  // update user interface, e.g. hide the call screen.
+}
+</code></pre>
+
+<h1 id="instantmessaging">Instant messaging</h1>
+
+<p>The <code>SINMessageClient</code> is the entry point to Instant Messaging functionality in the Sinch SDK. </p>
+
+<p>Messages are sent through the <code>SINMessageClient</code> and events are received by the <code>SINMessageClientDelegate</code>. The message client is owned by the <code>SINClient</code> and accessed via <code>-[SINClient messageClient]</code>. Instant messaging is not enabled by default. In order to enabled instant messaging, <code>- [SINClient setSupportMessaging: YES]</code> must be set.</p>
+
+<pre><code>SINClient sinchClient;
+[sinchClient setSupportMessaging: YES];
+SINMessageClient messageClient = [sinchClient messageClient];
+
+// Assign a delegate for instant messages events
+messageClient.delegate = ...
+</code></pre>
+
+<h2 id="sendingamessage">Sending a message</h2>
+
+<p>Messages are created using the static method <code>+[SINOutgoingMessage messageWithRecipient:text:]</code>. Once created, sending the message is as simple as calling <code>-[SINMessageClient sendMessage:]</code>:</p>
+
+<pre><code>SINOutgoingMessage *message = [SINOutgoingMessage messageWithRecipient:@&quot;&lt;recipient user id&gt; text:@&quot;Hi there!&quot;];
+
+[messageClient sendMessage:message];
+</code></pre>
+
+<h3 id="messagedeliverysuccess">Message delivery success</h3>
+
+<p>When a message to a recipient is successfully sent, the delegate is notified:</p>
+
+<pre><code>// SINMessageClientDelegate
+
+- (void) messageSent:(id&lt;SINMessage&gt;)message recipientId:(NSString *)recipientId{
+  // Persist outgoing message
+  // Update UI
+}
+</code></pre>
+
+<p>Updating the UI from the <code>messageSent:</code> callback is especially convenient when a user is simultaneously logged into more than one device. The <code>messageSent:</code> callback is fired on each device. This aids in keeping the UI consistent across devices.</p>
+
+<p>As soon as the system has confirmed the messages were delivered, the delegate is notified using the <code>messageDelivered:</code>method. Inspecting the <code>info</code>parameter passed to the callback reveals more details about the event.</p>
+
+<pre><code>- (void) messageDelivered:(id&lt;SINMessageDeliveryInfo&gt;)info {
+   NSLog(@&quot;Message with id %@ was delivered to recipient with id  %@&quot;,
+                                               info.messageId,
+                                               info.recipientId);
+}
+</code></pre>
+
+<h3 id="messagedeliveryfailures">Message delivery failures</h3>
+
+<p>Delivering a message can fail for various reasons: there might not be a network available, the recipient does not have instant messaging support, and so on. When a message failed to reach its destination the delegate is notified using the <code>messageDeliveryFailed:</code> callback. The reason for failing to deliver a message is propagated back as an array of <code>SINMessageFailureInfo</code> instances.</p>
+
+<pre><code>- (void) messageDeliveryFailed:(id&lt;SINMessage&gt;) message info:(NSArray *)messageFailureInfo {
+    for (id&lt;SINMessageFailureInfo&gt; reason in messageFailureInfo) {
+        NSLog(@&quot;Delivering message with id %@ failed to user %@. Reason %@&quot;, 
+        reason.messageId, reason.recipientId, [reason.error localizedDescription]);
+    }
+}
+</code></pre>
+
+<p><em>Note</em>: Messages are persisted internally in the SDK. In case the message was not sent successfully it will be retried automatically at a later point in time. The message will be retried for 12 hours and then fail permanently firing the failure callback.</p>
+
+<p><em>Note</em>: Messages are stored in the backend for 30 days before being removed. If the recipient has not started the app and downloaded the message history within this time, the message will be lost and no notification received.</p>
+
+<p><em>Note</em>: A message should be retried only in case of network unavailability (use <code>[[failureInfo.error domain] isEqualToString:SINErrorDomainNetwork]</code>). In this case, create a new instance of <code>SINOutgoingMessage</code> (using <code>+[SINOutgoingMessage messageWithMessage:]</code>) and send that instance because the previous message is considered stale. </p>
+
+<h2 id="receivingamessage">Receiving a message</h2>
+
+<p>Incoming messages are delivered to the delegate:</p>
+
+<pre><code>- (void) messageClient:(id&lt;SINMessageClient&gt;) messageClient 
+          didReceiveIncomingMessage:(id&lt;SINMessage&gt;)message {             
+
+  // Present a Local Notification if app is in background
+  if([UIApplication sharedApplication].applicationState == UIApplicationStateBackground){
+
+    UILocalNotification* notification = [[UILocalNotification alloc] init];
+    notification.alertBody = [NSString stringWithFormat:@&quot;Message from %@&quot;,
+                                                        [message recipientIds][0]];
+
+    [[UIApplication sharedApplication] presentLocalNotificationNow:notification];
+  } else {
+    // Update UI in-app
+  }
+
+  // Persist incoming message
+
+}
+</code></pre>
+
+<p><em>Note</em>: The application handles iOS local notifications for instant messages which is different than how incoming calls are handled. The Sinch SDK manages the local notifications for incoming calls.</p>
+
+<h2 id="sendingamessagetomultiplerecipients">Sending a message to multiple recipients</h2>
+
+<p>To send a message to multiple recipients, create the outgoing message with the <code>+[SINOutgoingMessage messageWithRecipients:text:]</code>.</p>
+
+<pre><code>NSArray *recipients = @[@&quot;recipient user id 1&quot;, @&quot;recipient user id 2&quot;];
+SINOutgoingMessage *message = [SINOutgoingMessage messageWithRecipients:recipients text:@&quot;Hi there!&quot;];
+
+[messageClient sendMessage:message];
+</code></pre>
+
+<h3 id="receivingstatusupdatesformulti-recipientmessages">Receiving status updates for multi-recipient Messages</h3>
+
+<p>When a message transitions to a new state it is communicated back using <code>SINMessageClientDelegate</code> as the single recipient case. The delegate&#8217;s callbacks are triggered once for every recipient. </p>
+
+<h1 id="audiohandling">Audio handling</h1>
+
+<p>If the application plays audio that does not originate from the Sinch SDK, certain guidelines should be followed. Additional information on audio session-related topics is available in the <a href="http://developer.apple.com/library/ios/#documentation/Audio/Conceptual/AudioSessionProgrammingGuide/Introduction/Introduction.html">Audio Session Programming Guide</a>.</p>
+
+<h2 id="audiosessions">Audio sessions</h2>
+
+<p>When a call is established, the Sinch client activates the shared audio session. When the call is disconnected, the Sinch client deactivates the shared audio session. If the application wants to play audio in any other context, it needs to reactivate the shared audio session. This applies after each finished call.</p>
+
+<p>When started, the Sinch SDK client sets itself as the audio session delegate. If the application wishes to override this behavior, the application needs to reset the delegate after the client has started but before any call has been started. (Doing this is not recommended.)</p>
+
+<h2 id="audiosessioncategories">Audio session categories</h2>
+
+<p>When the Sinch client is started, it sets the audio session category to <code>PlayAndRecord</code>. The reason the Sinch client only sets the audio category once, is to avoid interfering with what the hosting application may want to do with the audio session. </p>
+
+<p>If the application changes the audio session category, it is responsible for changing the category back to <code>PlayAndRecord</code> after the application has performed its audio task so that the category is correctly setup for calls.</p>
+
+<p>The Sinch SDK applies the audio session category mode <code>AVAudioSessionModeVoiceChat</code> for improved voice quality. Please see <a href="https://developer.apple.com/library/ios/documentation/AVFoundation/Reference/AVAudioSession_ClassReference/Reference/Reference.html">Apple&#8217;s AVAudioSession documentation</a> for further details.</p>
+
+<h2 id="audiosessioninterruptions">Audio session interruptions</h2>
+
+<p>When the users are in the midst of a Sinch SDK call, someone might call users using the PSTN network, thus interrupting the application and make iOS play the regular native ringtone. If the native phone call ends within 30 seconds, the application will start running again. If not, the Sinch SDK call will be terminated.</p>
+
+<h2 id="playingringtones">Playing ringtones</h2>
+
+<p>The <code>SINAudioController</code> object provides a convenience method <code>startPlayingSoundFile:loop:</code> for playing sounds that are related to a call, such as ringtones and busy tones. Details on how to use it can be found in the <a href="../reference/html/Protocols/SINAudioController.html">Reference</a> documentation.</p>
+
+<p>The sound file must be a mono (1 channel), 16-bit, uncompressed (PCM) <code>.wav</code> file with a sample rate of 8kHz, 16kHz, or 32kHz.</p>
+
+<pre><code>- (void)callReceivedOnRemoteEnd:(id&lt;SINCall&gt;)call {
+    NSString* soundFilePath = [[NSBundle mainBundle] pathForResource:@&quot;progresstone&quot; ofType:@&quot;wav&quot;];
+    // get audio controller from SINClient
+    id&lt;SINAudioController&gt; audioController = [self.client audioController];
+    [audioController startPlayingSoundFile:soundFilePath loop:NO];
+}
+</code></pre>
+
+<p>Applications that prefer to use their own code for playing sounds are free to do so, but they should follow the guidelines for <a href="#audiosessions">Audio Sessions</a> and <a href="#audiosessioncategories">Audio Session Categories</a> above.</p>
+
+<h1 id="backgroundmode">Background mode</h1>
+
+<p>Normally, when an iOS app enters background mode, all its sockets are closed by the OS. For VoIP apps, iOS provides the option to keep a signaling socket open in background mode, by tagging it as a VoIP socket. The Sinch SDK uses this option to be able to receive incoming calls while the app is in the background.</p>
+
+<p>If the app is not running in either the foreground or the background, the app is considered to be <em>offline</em>. If you have written your application to use push notifications when the application is offline, the Sinch SDK resorts to using those notifications to notify the app of incoming calls. Choosing which push notification service to use is up to you, but for iOS devices, the typical choice is to use Apple Remote Push Notifications. Refer to the <a href="#pushnotifications">Push Notifications</a> section for details.</p>
+
+<p>To enable the use of a VoIP-tagged signaling socket for receiving incoming calls while in background mode, call the <code>setSupportActiveConnectionInBackground:</code> method on the Sinch client object:</p>
+
+<pre><code>[client setSupportActiveConnectionInBackground:YES];
+</code></pre>
+
+<p>Note that the <code>setSupportActiveConnectionInBackground:</code> method should be called before the client has been started with the <code>start</code> method.</p>
+
+<p>When an incoming call is received, iOS notices that there is pending activity on the VoIP signaling socket and temporarily wakes up the app. The app is not entirely awake, but it has a few seconds to let the Sinch SDK process the received data in the background. If a call was received, the Sinch SDK schedules a local iOS notification, which is presented to the user immediately.</p>
+
+<p>If the user taps the notification, iOS brings the app back into the foreground. The notification object contains information that is needed by the Sinch SDK to start the incoming call. To hand over the notification object to the Sinch client, use the <code>relayLocalNotification:</code> method:</p>
+
+<pre><code>- (void)application:(UIApplication *)application didReceiveLocalNotification:(UILocalNotification *)notification {
+
+    if ([notification sin_isSinchNotification]){
+
+      // This will trigger -[SINClientDelegate didReceiveIncomingCall:] if the notification
+      // represents a call (i.e. contrast to that it may represent an instant-message)
+      id&lt;SINNotificationResult&gt; result = [client relayLocalNotification:notification];
+
+      if (result.isCall &amp;&amp; result.callResult.isTimedOut) {
+        // The notification is is related to an incoming call,
+        // but was too old and the call has expired.
+        // The call should be treated as a missed call appropriate
+        // action should be taken to communicate that to the user.
+      }
+    }
+}
+</code></pre>
+
+<h2 id="customizingthelocalnotificationcontent">Customizing the local notification content</h2>
+
+<p>Apps that are designed to receive calls with a VoIP tagged socket in background mode must implement the delegate method <code>client:localNotificationForIncomingCall:</code>. The delegate is responsible for composing a <code>SINLocalNotification</code> object with content that is shown to the user when the local notification is presented to the user by the OS. The content includes various descriptive strings, a badge number, and the path to a sound file that is played when the notification is presented.</p>
+
+<h2 id="answeringwhennotified">Answering when notified</h2>
+
+<p>Once the Sinch SDK has processed the call information extracted from the notification, it calls the delegate method <code>client:didReceiveIncomingCall:</code>. Depending on the desired behavior for the app, the incoming call may either be treated as any other incoming call and let the user tap an additional button to answer it, or the call may be answered automatically when the user has acted on the local notification.</p>
+
+<p>In the latter case, the app can determine whether the call originated from background mode or not by examining the <code>applicationStateWhenReceived</code> property of the call details object. If the application was active when it received the call, it means the app was in the foreground. This approach is also applicable to offline calls with Apple Push Notifications.</p>
+
+<pre><code>- (void)client:(id&lt;SINClient&gt;)client didReceiveIncomingCall:(id&lt;SINCall&gt;)call {
+    call.delegate = self;
+
+    if (call.details.applicationStateWhenReceived == UIApplicationStateActive) {
+        // Show an answer button or similar in the UI
+    } else {
+        // Application was in not in the foreground when the call was initially received,
+        // and the user has opened the application (e.g. via a Local Notification),
+        // which we then interpret as that the user want to answer the call.
+        [call answer];
+    }
+}
+</code></pre>
+
+<h2 id="sinchlocalnotificationsandthenotificationcenter">Sinch local notifications and the Notification Center</h2>
+
+<p>If the Sinch SDK is used with support for an active signaling connection in the background enabled (it is disabled by default), local notifications are used. </p>
+
+<p>The following details explain how the Sinch SDK handles local notifications and how it affects what is presented in the Notification Center.</p>
+
+<ul>
+<li>A notification is passed in to the method <code>-[SINClient relayLocalNotification:notification:]</code> is removed from the Notification Center after it has been handled.</li>
+<li>A local notification representing an incoming call is removed if the call times out.</li>
+<li>Invoking <code>-[SINCall hangup]</code> from <code>-[SINClient client:localNotificationForIncomingCall]</code> is a valid operation and can be used to dismiss a call while the user is busy talking in the regular phone app. This effectively prevents the SDK from invoking the <code>-[SINClientDelegate client:didReceiveIncomingCall:]</code> method when the app returns to foreground.</li>
+<li>Invoking <code>-[SINCall answer]</code> while being in the background is possible. The call is not immediately answered but the operation is considered pending and the call answered once the app returns to the foreground.</li>
+</ul>
+
+<h1 id="pushnotifications">Push notifications</h1>
+
+<p>An application is considered offline in the following scenarios:</p>
+
+<ul>
+<li>When the application is not running</li>
+<li>When background mode has been disabled for the Sinch client, and the application is not in the foreground</li>
+</ul>
+
+<p>For these scenarios, push notifications must be implemented in the application to be able to receive incoming calls and instant messages. The following sections cover how to support receiving calls and messages using push notifications.</p>
+
+<p>The Sinch client relies on a push service to launch the application if it is not currently listening for incoming calls or messages due to the application being offline. The choice of which push service to use is up to you, but for iOS applications, the typical choice is to use Apple Remote Push Notifications.</p>
+
+<p>When offline, the recipient of a call or message receives a push notification containing a Sinch-specific payload which enables the Sinch client to connect the incoming call or message. Acting on the push notification brings the application to the foreground which allows the user to answer the call or view the message.</p>
+
+<figure>
+<img src="images/push-sequence-diagram_apple.png" alt="Figure 2. Push notification sequence." />
+<figcaption>Figure 2. Push notification sequence.</figcaption></figure>
+
+
+
+<p>Figure 2 describes the following sequence of events: Both users start their applications and Sinch clients. When A (the caller) calls B (the callee), B&#8217;s application is in a state where it is not considered online (that is reachable using an active socket connection). Sinch notices that B is not online, and tells A to send a push notification to B so that B can answer the call.</p>
+
+<p>When the Sinch client on the caller&#8217;s (or sender&#8217;s) side observes that the destination client is offline, it notifies the application to trigger the sending of a push notification to the callee&#8217;s device.</p>
+
+<h2 id="pushnotificationdata">Push notification data</h2>
+
+<p>On startup, each instance of the application is expected to register a device identifier. The identifier is referred to as <em>push notification data</em> and should be provided to the Sinch client by the method <code>registerPushNotificationData:</code>. </p>
+
+<p>Push notifications can be addressed to that identifier in the event that the application goes offline. </p>
+
+<p>The push notification data can be any byte sequence; it is up to you to define its structure and what it contains. However, the push notification data must not exceed 1024 bytes. It should contain enough information to allow your application or application server to use a push service to send a push notification to a specific user of the application on a specific device. For example, an iOS exclusive application would likely use the Apple Push Notification Device Token as push notification data. Multi-platform applications may use a mix of different push services. The following sections assume that Apple Remote Notifications are used, but the use pattern for other push services is similar.</p>
+
+<p>The push notification data can be unregistered by calling the <code>unregisterPushNotificationData</code> method. This disables incoming calls using push notifications addressed to the specific device.</p>
+
+<h2 id="enablepushnotifications">Enable push notifications</h2>
+
+<p>Start by enabling support for push notifications when initiating the <em>SINClient</em>:</p>
+
+<pre><code>#import &lt;Sinch/Sinch.h&gt;
+
+id&lt;SINClient&gt; client = [Sinch clientWithApplicationKey:@&quot;&lt;application key&gt;&quot; 
+                                         applicationSecret:@&quot;&lt;application secret&gt;&quot;
+                                           environmentHost:@&quot;sandbox.sinch.com&quot; 
+                                                    userId:@&quot;&lt;user id&gt;&quot;];
+
+[client setSupportPushNotifications:YES];
+
+client.delegate = ...; 
+
+[client start];
+</code></pre>
+
+<p>Supporting offline calls and/or messages requires that the application registers for remote push notifications, which in the example that follows is done in the method <em>-[UIApplicationDelegate application:didFinishLaunchingWithOptions:]</em>. </p>
+
+<pre><code>- (BOOL)application:(UIApplication *)app didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
+    UIRemoteNotificationType types = UIRemoteNotificationTypeAlert | UIRemoteNotificationTypeSound;
+    [[UIApplication sharedApplication] registerForRemoteNotificationTypes:types];
+}
+</code></pre>
+
+<p>The next step is to register the <em>push notification data</em> with the <em>SINClient</em>, which in the example below is done by using the <em>APNS</em> device token as <em>push notification data</em>. Upon receiving the the device token from Apple Push Notification Service using the <em>UIApplicationDelegate</em>-method, it is registered with the <em>SINClient</em>.</p>
+
+<pre><code>- (void)application:(UIApplication *)application didRegisterForRemoteNotificationsWithDeviceToken:(NSData *)deviceToken {
+    // get previously initiated Sinch client
+    id&lt;SINClient&gt; client = [self sinchClient];
+
+    [client registerPushNotificationData:deviceToken];
+}
+</code></pre>
+
+<p>Please refer to Apple’s
+<a href="https://developer.apple.com/library/ios/documentation/NetworkingInternet/Conceptual/RemoteNotificationsPG/Introduction.html">Local and Push Notification Programming Guide</a> for more information on how to obtain the Apple Push Notification Device Token.</p>
+
+<h2 id="sendingandreceivingapplepushnotifications">Sending and receiving Apple push notifications</h2>
+
+<p>To send push messages, you must have a server that is configured for sending push notifications to Apple Push Notification Service. Please see the <a href="../REST-API/user-guide/index.html">Sinch REST API User Guide</a> for details on how to handle feedback from Apple Push Notification Service.</p>
+
+<p>Please also refer to Apple&#8217;s <a href="https://developer.apple.com/library/ios/documentation/NetworkingInternet/Conceptual/RemoteNotificationsPG/Introduction.html">Local and Push Notification Programming Guide</a> for further details on push notifications.</p>
+
+<h3 id="onthecallerside">On the caller side</h3>
+
+<p>When the recipient&#8217;s application is offline and the app needs to notify the user using a push notification, the caller&#8217;s or sender&#8217;s application is notified using the delegate method <code>call:shouldSendPushNotifications:</code>.</p>
+
+<p>Because there might be multiple registered devices for the recipient user (for example, the same user is using the application on both an iPhone and an iPad) the callback is passed an array of <code>SINPushPair</code>s. The pairs contain a payload that is Sinch- and call-specific. Moreover, the pairs contain a push data byte array. The Sinch-specific payload should be embedded in the push notification sent to the recipient&#8217;s device(s). The push data is the same push data that the recipient&#8217;s application registered earlier. </p>
+
+<pre><code>- (void)call:(id&lt;SINCall&gt;)call shouldSendPushNotifications:(NSArray *) pushPairs {
+    // Send payload and push data to application server
+    // which should communicate with Apple Push Notification Service
+    // to send push notifications.
+}
+</code></pre>
+
+<p><em>NOTE</em>: This example shows the calling case. Messaging works the same way.</p>
+
+<p>A push notification should be sent to each device, where each <code>pushPair.pushData</code> entry in the array corresponds to one device. The push notification should include the Sinch-specific payload so it can be forwarded to the Sinch client running on the destination device.</p>
+
+<p>The Sinch-specific payload should be embedded as custom payload data in the Apple Push Notification Payload, see JSON example below.</p>
+
+<pre><code>{
+    &quot;aps&quot; : {
+        &quot;alert&quot; : &quot;Incoming call from &lt;user&gt;&quot;,
+        &quot;sound&quot; : &quot;bingbong.aiff&quot;
+    },
+    &quot;SIN&quot; : &lt;payload&gt;,
+}
+</code></pre>
+
+<p>The Sinch-specific payload will not exceed 100 bytes, meaning that there should be 156 bytes available in the push notification payload for application-specific purposes. </p>
+
+<p>Please refer to Apple&#8217;s
+<a href="https://developer.apple.com/library/ios/documentation/NetworkingInternet/Conceptual/RemoteNotificationsPG/Introduction.html">Local and Push Notification Programming Guide</a> for further details.</p>
+
+<h3 id="onthecalleeside">On the callee side</h3>
+
+<p>As a prerequisite, offline calling and messaging must have been enabled on the receiver&#8217;s side (see <a href="#pushnotifications">Push Notifications</a>).</p>
+
+<p>When the application receives a push notification from the Apple Push Notification Service, the application launches and extracts the Sinch-specific payload from the push notification. Once extracted the payload is forwarded to the Sinch client using the method <code>relayRemotePushNotificationPayload:</code>.</p>
+
+<pre><code>- (BOOL)application:(UIApplication *)app didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
+
+    NSDictionary* remotePush = [launchOptions objectForKey:UIApplicationLaunchOptionsRemoteNotificationKey];
+
+    if (remotePush) {
+
+        // Extract the Sinch-specific payload from the Apple Remote Push Notification
+        NSString* payload = [remotePush objectForKey:@&quot;SIN&quot;]; 
+
+        // Get previously initiated Sinch client
+        id&lt;SINClient&gt; client = [self sinchClient];
+
+        id&lt;SINNotificationResult&gt; result = [client relayRemotePushNotificationPayload:payload];
+
+        if (result.isCall &amp;&amp; result.callResult.isTimedOut) {
+            // Present alert notifying about missed call
+        } else if (!result.isValid) {
+            // Handle error                
+        }
+    }
+}
+</code></pre>
+
+<p><em>Note</em>: You should have similar logic of relaying the push notification payload to the <em>SINClient</em>-instance in your implementation of <code>-[UIApplicationDelegate application: didReceiveRemoteNotification:]</code>. </p>
+
+<h1 id="applicationauthentication">Application authentication</h1>
+
+<p>A user identity must be provided when initiating a Sinch client. The first time the application instance and the Sinch client are running on behalf of a particular user, they are required to register against the Sinch service. This is mostly handled transparently by the Sinch SDK, but it works slightly differently depending on which authentication scheme you choose to use.</p>
+
+<p>The step of registering a user identity against the Sinch service requires the application instance to be authenticated and authorized to perform the user registration. Once the application instance has successfully registered the user identity, it will also have obtained the necessary credentials to perform further authorized requests for that specific user, for example, calling.</p>
+
+<p>Two different authentication schemes are available: authentication by client access to application secret and authentication supported by application server. </p>
+
+<h2 id="authenticationbyclientaccesstoapplicationsecret">Authentication by client access to Application Secret</h2>
+
+<p>This application authentication scheme is based on giving the application direct access to the Application Secret, which enables the Sinch Client SDK in the application to self-sign an authorized request to perform user registration. Choosing this authentication scheme corresponds to initiating the Sinch client by using the factory method that takes both an Application Key and an Application Secret. </p>
+
+<p>Using this authentication scheme is the quickest way to get started as the client application instances can directly perform authorized requests against the Sinch service.</p>
+
+<p><em>Caution:</em> It is not recommended to have the application secret in plain text in the source code in the release version of the application.</p>
+
+<h2 id="authenticationsupportedbyapplicationserver">Authentication supported by application server</h2>
+
+<p>This application authentication scheme is based on the client application instance not having direct access to the Application Secret. Instead, when the Sinch client needs to perform an authorized request to register a user identity against the Sinch service, it needs to be provided with an authentication signature and a registration sequence to perform the registration. This should be provided by the application&#8217;s backend service, for example, by using a HTTP request over an SSL connection.</p>
+
+<p>This scheme has the benefit of the application secret never being directly accessible by the client applications and provides a better level of security as well as flexibility.</p>
+
+<p><em>Note:</em> The need for the Sinch client to request an authentication signature and registration sequence is only required once per user and device&#8211;not on every application launch.</p>
+
+<figure>
+<img src="images/authentication_via_application_server.png" alt="Figure 4. Authentication Supported by Application Server" />
+<figcaption>Figure 4. Authentication Supported by Application Server</figcaption></figure>
+
+
+
+<h3 id="generatingthesignature">Generating the signature</h3>
+
+<p>The <em>Application Server</em> is responsible for generating a valid signature for each registration request that it accepts as a valid user registration. The <em>sequence</em> is a <a href="http://en.wikipedia.org/wiki/Cryptographic_nonce">cryptographic nonce</a>, and must be a monotonically increasing value. The signature is then generated as as follows (pseudogrammar):</p>
+
+<pre><code>string userId;
+string applicationKey; // E.g. &quot;196087a1-e815-4bc4-8984-60d8d8a43f1d&quot;
+string applicationSecret; // E.g. &quot;oYdgGRXoxEuJhGDY2KQ/HQ==&quot;
+uint64 sequence = previous_sequence + 1; // E.g. previous_sequence = 0
+
+string stringToSign = userId + applicationKey + sequence + applicationSecret;
+
+// Use a Base64-encoder that don't introduce line-breaks, 
+// or trim the output signature afterwards.
+string signature = Base64.encode(SHA1.digest(stringToSign));
+</code></pre>
+
+<p>For example, in Java:</p>
+
+<pre><code>    // Generating the Signature - Java
+    // import java.security.MessageDigest;
+    // import org.apache.commons.codec.binary.Base64;
+
+    String userId; 
+    String applicationKey; // E.g. &quot;196087a1-e815-4bc4-8984-60d8d8a43f1d&quot;;
+    String applicationSecret; // E.g. &quot;oYdgGRXoxEuJhGDY2KQ/HQ==&quot;;
+    long sequence; // fetch and increment last used sequence
+
+    String toSign = userId + applicationKey + sequence + applicationSecret;
+
+    MessageDigest messageDigest = MessageDigest.getInstance(&quot;SHA-1&quot;);
+    byte[] hash = messageDigest.digest(toSign.getBytes(&quot;UTF-8&quot;));
+
+    String signature = Base64.encodeBase64String(hash).trim();
+</code></pre>
+
+<h3 id="startingtheclientandprovidingauthorizationcredentialsforuserregistration">Starting the Client and Providing Authorization Credentials for User Registration</h3>
+
+<pre><code>// Instantiate a client object using the client factory method.
+id&lt;SINClient&gt; client = [Sinch clientWithApplicationKey:@&quot;&lt;application key&gt;&quot; 
+                                           environmentHost:@&quot;sandbox.sinch.com&quot; 
+                                                    userId:@&quot;&lt;user id&gt;&quot;];
+
+client.delegate = ...;
+
+[client start];
+
+// This will on the first run for this user, call 
+// -[SINClientDelegate client:requiresRegistrationCredentials:], 
+// which implementations could look something like this:
+
+- (void)client:(id&lt;SINClient&gt;)client 
+requiresRegistrationCredentials:(id&lt;SINClientRegistration&gt;) registrationCallback {
+
+  // Perform API request to server which keeps the Application Secret
+  [myAPIService getAuthorizedSignatureForUser:[client userId]
+  onSuccess:^(NSString* signature, long long sequence){
+
+    // Forward the signature and sequence back into Sinch SDK
+    [registrationCallback registerWithSignature:signature sequence:sequence];
+  }
+  onFailure:^(NSError* error) {
+
+    // Forward potential network request error to Sinch SDK, 
+    // e.g. failure due to no internet connection.
+    [registrationCallback registerDidFail:error];
+  }];
+}
+</code></pre>
+
+<h1 id="miscellaneous">Miscellaneous</h1>
+
+<h2 id="minimumrequirements">Minimum requirements</h2>
+
+<p>iOS 5.0 is the minimum iOS version required for using the Sinch SDK (<em>iOS Deployment Target</em>).</p>
+
+<p><em>Note:</em> The Sinch SDK library uses Automatic Reference Counting (ARC). However, it can still be used in non-ARC projects.</p>
+
+<h2 id="noteonsinch.frameworkfilesizevs.linkedsize">Note on Sinch.framework file size vs. linked size</h2>
+
+<p>The <em>Sinch.framework</em> file includes binaries for three architectures, <em>armv7</em>, <em>armv7s</em>, and <em>i386</em>.
+When linking an application target against the <em>Sinch.framework</em> targeting an iOS device, it will add a total of total approximately 12.9Mb to the application binary.
+(Note that this is less than the size of the <em>Sinch.framework</em> file because only the ARM slices are linked, <em>i386</em> is used only for the iOS Simulator.)</p>
+
+<h2 id="productionandsandboxenvironments">Production and Sandbox environments</h2>
+
+<p>Sinch provides two environments:</p>
+
+<ul>
+<li>Production - Used for applications deployed in production.</li>
+<li>Sandbox - Used during development and testing.</li>
+</ul>
+
+<p>The environment is passed as the parameter <em>environmentHost</em> when instantiating the Sinch client.</p>
+
+<table>
+<colgroup>
+<col style="text-align:left;"/>
+<col style="text-align:left;"/>
+</colgroup>
+
+<thead>
+<tr>
+	<th style="text-align:left;">Environment</th>
+	<th style="text-align:left;">EnvironmentHost parameter</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+	<td style="text-align:left;">Production</td>
+	<td style="text-align:left;">clientapi.sinch.com</td>
+</tr>
+<tr>
+	<td style="text-align:left;">Sandbox</td>
+	<td style="text-align:left;">sandbox.sinch.com</td>
+</tr>
+</tbody>
+</table>
+<h2 id="restrictionsonuserids">Restrictions on User IDs</h2>
+
+<p>User IDs can only contain characters in the <em>printable ASCII character set</em>. That is:</p>
+
+<pre><code>!&quot;#$%&amp;'()*+,-./0123456789:;&lt;=&gt;?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~
+</code></pre>
+
+<p>User IDs <strong>must not</strong> be longer than <strong>64</strong> characters.</p>
+
+<h2 id="encryptionexportregulations">Encryption export regulations</h2>
+
+<p>Please check the Summary of U.S. Export Controls Applicable to Commercial Encryption Products and ensure that the application is registered for the Encryption Regulations, if applicable. It can be found under this <a href="http://www.sinch.com/export">link</a>.</p>
+
+<h2 id="statistics">Statistics</h2>
+
+<p>The Sinch SDK client uploads statistics to the Sinch servers at the end of a call, a call failure, or similar event. The statistics are used for monitoring of network status, call quality, and other aspects regarding the general quality of the service.</p>
+
+<p>Some of the information is not anonymous and may be associated with the User ID call participants.</p>
+
+<p>The statistics upload is done by the client in the background.</p>
+
+<h2 id="ios7compatibilityguidelines">iOS 7 Compatibility guidelines</h2>
+
+<h3 id="requestuserpermissionforusingthemicrophone">Request user permission for using the microphone</h3>
+
+<p>In iOS 7, additional user privacy constraints are enforced which requires the application to be granted permission to use the device microphone. Unless the application has explicitly requested permission to use the microphone, the user is shown a dialog the first time the microphone is activated. </p>
+
+<p>In the context of the Sinch SDK, this occurs once the first call is established <em>unless</em> the application has been granted permission earlier. We <strong>strongly recommend</strong> you explicitly request permission to use the microphone in your application at an appropriate time such as when the user first sets up Sinch. You should not rely on the permission dialog shown when the first Sinch call is established as this will create an awkward user experience. </p>
+
+<p>By explicitly requesting permission using the methods available in the iOS SDK, the application has more control over when the dialog is shown to the user. This results in a better user experience. Please see the <a href="http://developer.apple.com/library/ios/#documentation/AVFoundation/Reference/AVAudioSession_ClassReference/Reference/Reference.html">Apple iOS SDK documentation on the class <em>AVAudioSession</em></a> for details on how request permission to use the microphone.</p>
+
+<h2 id="arm64architecturenotsupported-xcodebuildsettinginstructions">arm64 architecture not supported - Xcode build setting instructions</h2>
+
+<p>The arm64 architecture is not yet supported by the iOS Sinch SDK. </p>
+
+<p>With the introduction of Xcode 5.1, arm64 is included in the default &quot;Standard architecture” build setting. This results in projects using the default setting automatically building for arm64 along with the standard 32-bit architectures. </p>
+
+<p>Currently, you need to exclude arm64 explicitly as follows:</p>
+
+<p>Open the Xcode project Build Settings and set both <em>&#8216;Architectures&#8217;</em> and <em>&#8216;Valid architectures&#8217;</em> to <strong>$(ARCHS_STANDARD_32_BIT)</strong></p>
+
+<p>It should then look like this:</p>
+
+<figure>
+<img src="images/ios_xcode_settings_disable_arm64.png" alt="" /></figure>
+
+
+
+<h2 id="ios8appextensionsandarm64">iOS 8 App Extensions and arm64</h2>
+
+<p><em>App Extensions</em> is a new feature in iOS 8. App extensions are compiled into executables that are separate from the main application executable. Apple requires all app extensions to be compiled as arm64, thus due to that the Sinch SDK does not support arm64 it is not supported to use the Sinch SDK from an app extension. Though it is valid to use the Sinch SDK in the main application and build it as a 32-bit only executable and still bundle other app extensions as part of your application.</p>
+
+<h2 id="glossary">Glossary</h2>
+
+<p>This glossary defines some of the domain specific terms used throughout this document.</p>
+
+<table>
+<colgroup>
+<col style="text-align:left;"/>
+<col style="text-align:left;"/>
+</colgroup>
+
+<thead>
+<tr>
+	<th style="text-align:left;">Term</th>
+	<th style="text-align:left;">Explanation</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+	<td style="text-align:left;">Application</td>
+	<td style="text-align:left;">The mobile application running on iOS and/or Android. A partner can have more than one application.</td>
+</tr>
+<tr>
+	<td style="text-align:left;">Application Instance</td>
+	<td style="text-align:left;">One installation of the application on a single device.</td>
+</tr>
+<tr>
+	<td style="text-align:left;">Application Key</td>
+	<td style="text-align:left;">A key generated by Sinch. The key is unique to the application. A key looks like <code>196087a1-e815-4bc4-8984-60d8d8a43f1d</code> (lowercase hexadecimal formatted GUID).</td>
+</tr>
+<tr>
+	<td style="text-align:left;">Application Secret</td>
+	<td style="text-align:left;">A string generated by Sinch. The secret is used to verify the application. A secret looks like <code>oYdgGRXoxEuJhGDY2KQ/HQ==</code> (Base64-encoded string representation).</td>
+</tr>
+<tr>
+	<td style="text-align:left;">Callee</td>
+	<td style="text-align:left;">The person receiving a call.</td>
+</tr>
+<tr>
+	<td style="text-align:left;">Caller</td>
+	<td style="text-align:left;">The person making a call.</td>
+</tr>
+<tr>
+	<td style="text-align:left;">User</td>
+	<td style="text-align:left;">A user of the mobile application. The actual person holding the mobile device.</td>
+</tr>
+<tr>
+	<td style="text-align:left;">User Identity</td>
+	<td style="text-align:left;">Identity of a user in the application domain. Can be any string, for instance a user name, user id, phone number or email address.</td>
+</tr>
+<tr>
+	<td style="text-align:left;">Active Connection</td>
+	<td style="text-align:left;">A socket connection for signaling purposes where incoming calls are received.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="thirdpartylibrariesandcopyrightnotices">Third party libraries and copyright notices</h2>
+
+<p>All Third Party Libraries and Copyright notices can be found under this <a href="http://www.sinch.com/legal/third-party-licenses/">link</a>.</p>
+
+</body>
+</html>
